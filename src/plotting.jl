@@ -8,10 +8,9 @@
 #
 # Conventions
 # ───────────
-# • One series per location; location names become the legend labels.
-# • Multi-location TidalConstituents / FourierSeries use layout sub-panels so
-#   every location gets its own axes and is easy to read.
-# • TimeSeries locations are overlaid on a single axes (standard for comparison).
+# • One series per plot; location_index selects which location to show.
+# • TidalConstituents uses a (2 × 1) layout: amplitude bar chart (top) and
+#   phase scatter (bottom).
 
 import Plots
 import Plots: mm
@@ -24,12 +23,12 @@ import Plots: mm
 Line plot of one location in `ts` versus time.
 
 # Keyword arguments (in addition to all standard Plots.jl kwargs)
-- `location_index`: which location to plot (default `1`).  Pass `nothing` to
-  overlay all locations on the same axes.
+- `location_index`: which location to plot (default `1`).
 - `yunit`: string appended to the y-axis label (default `""`).
 """
 function Plots.plot(ts::AbstractTimeSeries;
-                    location_index::Union{Integer, Nothing} = 1,
+                    location_index::Integer = 1,
+                    label = nothing,
                     yunit::String = "",
                     kwargs...)
     times  = get_times(ts)
@@ -37,20 +36,16 @@ function Plots.plot(ts::AbstractTimeSeries;
     names  = get_names(ts)
     qty    = get_quantity(ts)
 
-    indices = isnothing(location_index) ? eachindex(names) : (location_index:location_index)
-
-    if !isnothing(location_index) && location_index ∉ eachindex(names)
+    if location_index ∉ eachindex(names)
         error("location_index $location_index is out of range " *
               "($(length(names)) location(s) available).")
     end
 
     ylabel = isempty(yunit) ? qty : "$qty ($yunit)"
+    lbl    = isnothing(label) ? names[location_index] : label
 
-    # Plot the first series in the initial plot() call so that axis attributes
-    # (xlabel in particular) are guaranteed to be applied with data present.
-    first_i = first(indices)
-    p = Plots.plot(times, vals[first_i, :];
-        label         = names[first_i],
+    return Plots.plot(times, vals[location_index, :];
+        label         = lbl,
         xlabel        = "Time",
         ylabel        = ylabel,
         title         = get_source(ts),
@@ -59,10 +54,6 @@ function Plots.plot(ts::AbstractTimeSeries;
         left_margin   = 5mm,
         kwargs...,
     )
-    for i in Iterators.drop(indices, 1)
-        Plots.plot!(p, times, vals[i, :]; label = names[i])
-    end
-    return p
 end
 
 # ── TidalConstituents ──────────────────────────────────────────────────────────
@@ -70,17 +61,17 @@ end
 """
     plot(tc::AbstractTidalConstituents; location_index=1, kwargs...) -> Plots.Plot
 
-Two-row panel per location: amplitude bar chart (top) and phase scatter (bottom).
+Two-panel plot: amplitude bar chart (top) and phase scatter (bottom).
 Constituent names appear on the shared x-axis; x-tick labels are rotated 90°.
 
 # Keyword arguments (in addition to all standard Plots.jl kwargs)
-- `location_index`: which location to plot (default `1`).  Pass `nothing` to
-  show all locations side-by-side in a `(2 × N)` grid.
-- `max_constituents`: show only the top N constituents ranked by mean amplitude
-  across the plotted locations (default `20`).  Set to `typemax(Int)` to show all.
+- `location_index`: which location to plot (default `1`).
+- `max_constituents`: show only the top N constituents ranked by amplitude
+  (default `20`).  Set to `typemax(Int)` to show all.
 """
 function Plots.plot(tc::AbstractTidalConstituents;
-                    location_index::Union{Integer, Nothing} = 1,
+                    location_index::Integer = 1,
+                    label = nothing,
                     max_constituents::Integer = 20,
                     kwargs...)
     cnames = get_constituent_names(tc)
@@ -89,57 +80,48 @@ function Plots.plot(tc::AbstractTidalConstituents;
     lnames = get_names(tc)
     qty    = get_quantity(tc)
 
-    if !isnothing(location_index) && location_index ∉ eachindex(lnames)
+    if location_index ∉ eachindex(lnames)
         error("location_index $location_index is out of range " *
               "($(length(lnames)) location(s) available).")
     end
 
-    indices = isnothing(location_index) ? eachindex(lnames) : (location_index:location_index)
-    n_plot  = length(indices)
-
-    # Select the top max_constituents by mean amplitude across the plotted locations,
-    # then sort the selection by constituent frequency (ascending) for display.
+    # Select the top max_constituents by amplitude, then sort by frequency.
     n_show      = min(length(cnames), max_constituents)
-    mean_amp    = vec(sum(amps[collect(indices), :], dims=1)) ./ length(indices)
-    top_indices = sortperm(mean_amp, rev=true)[1:n_show]
+    top_indices = sortperm(vec(amps[location_index, :]), rev=true)[1:n_show]
     dummy_date  = [DateTime(2000, 1, 1)]
     top_freqs   = get_schureman_freqs(cnames[top_indices], dummy_date)
     order       = top_indices[sortperm(vec(top_freqs))]
-    cnames     = cnames[order]
-    amps       = amps[:,   order]
-    phases     = phases[:, order]
-    x          = 1:n_show
-    xtick_args = (collect(x), cnames)
+    cnames      = cnames[order]
+    amps_loc    = amps[location_index, order]
+    phases_loc  = phases[location_index, order]
+    x           = 1:n_show
+    xtick_args  = (collect(x), cnames)
+    lbl         = isnothing(label) ? lnames[location_index] : label
 
     p = Plots.plot(;
-        layout        = (2, n_plot),
+        layout        = (2, 1),
         bottom_margin = 8mm,
         left_margin   = 5mm,
         kwargs...,
     )
 
-    for (col, j) in enumerate(indices)
-        amp_idx   = col           # top row: column col
-        phase_idx = n_plot + col  # bottom row: column col
+    Plots.bar!(p[1], x, amps_loc;
+        label     = lbl,
+        ylabel    = "$qty amplitude (m)",
+        title     = lnames[location_index],
+        xticks    = xtick_args,
+        xrotation = 90,
+    )
 
-        Plots.bar!(p[amp_idx], x, amps[j, :];
-            label     = lnames[j],
-            ylabel    = "$qty amplitude (m)",
-            title     = lnames[j],
-            xticks    = xtick_args,
-            xrotation = 90,
-        )
-
-        Plots.scatter!(p[phase_idx], x, phases[j, :];
-            label     = lnames[j],
-            ylabel    = "Phase (°)",
-            ylims     = (0, 360),
-            xticks    = xtick_args,
-            xrotation = 90,
-            markersize = 3,
-            markerstrokewidth = 0,
-        )
-    end
+    Plots.scatter!(p[2], x, phases_loc;
+        label     = lbl,
+        ylabel    = "Phase (°)",
+        ylims     = (0, 360),
+        xticks    = xtick_args,
+        xrotation = 90,
+        markersize = 3,
+        markerstrokewidth = 0,
+    )
 
     return p
 end
@@ -152,8 +134,7 @@ end
 Amplitude spectrum: frequency on the x-axis, amplitude on the y-axis.
 
 # Keyword arguments (in addition to all standard Plots.jl kwargs)
-- `location_index`: which location to plot (default `1`).  Pass `nothing` to
-  show all locations, each in its own sub-panel.
+- `location_index`: which location to plot (default `1`).
 - `xscale`: x-axis scale passed to Plots.jl, e.g. `:log10` (default `:identity`).
 - `freq_unit`: `"cpd"` (cycles per day, default) or `"Hz"` or `"cph"`
   (cycles per hour).  Frequencies are converted before plotting.
@@ -163,7 +144,8 @@ Amplitude spectrum: frequency on the x-axis, amplitude on the y-axis.
 - `yunit`: string appended to the y-axis label (default `""`).
 """
 function Plots.plot(fs::AbstractFourierSeries;
-                    location_index::Union{Integer, Nothing} = 1,
+                    location_index::Integer = 1,
+                    label = nothing,
                     xscale::Symbol    = :identity,
                     freq_unit::String = "cpd",
                     freq_max::Real    = 20.0,
@@ -174,13 +156,10 @@ function Plots.plot(fs::AbstractFourierSeries;
     names  = get_names(fs)
     qty    = get_quantity(fs)
 
-    if !isnothing(location_index) && location_index ∉ eachindex(names)
+    if location_index ∉ eachindex(names)
         error("location_index $location_index is out of range " *
               "($(length(names)) location(s) available).")
     end
-
-    indices = isnothing(location_index) ? eachindex(names) : (location_index:location_index)
-    n_plot  = length(indices)
 
     # Convert frequency axis
     scale_factor, xlabel = if freq_unit == "cph"
@@ -191,35 +170,27 @@ function Plots.plot(fs::AbstractFourierSeries;
         1.0, "Frequency (Hz)"
     end
     freqs_plot = freqs .* scale_factor
+    amps_loc   = amps[location_index, :]
 
     ylabel = isempty(yunit) ? "$qty amplitude" : "$qty amplitude ($yunit)"
+    lbl    = isnothing(label) ? names[location_index] : label
 
     # Drop the DC bin (f=0) when a log x-scale is requested to avoid log(0) warnings.
     if xscale === :log10 || xscale === :ln || xscale === :log2
         mask       = freqs_plot .> 0
         freqs_plot = freqs_plot[mask]
-        amps       = amps[:, mask]
+        amps_loc   = amps_loc[mask]
     end
 
-    p = Plots.plot(;
-        layout        = (n_plot, 1),
+    return Plots.plot(freqs_plot, amps_loc;
+        label         = lbl,
+        xlabel        = xlabel,
+        ylabel        = ylabel,
+        title         = names[location_index],
+        xscale        = xscale,
+        xlims         = (0.0, Float64(freq_max)),
         bottom_margin = 5mm,
         left_margin   = 5mm,
         kwargs...,
     )
-
-    xlims = (0.0, Float64(freq_max))
-
-    for (panel, i) in enumerate(indices)
-        Plots.plot!(p[panel], freqs_plot, amps[i, :];
-            label     = get(kwargs, :label, names[i]),
-            xlabel    = xlabel,
-            ylabel    = ylabel,
-            title     = names[i],
-            xscale    = xscale,
-            xlims     = xlims,
-        )
-    end
-
-    return p
 end

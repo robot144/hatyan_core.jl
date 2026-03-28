@@ -5,7 +5,7 @@
 # ────────
 # • Verify that each plot() method returns a Plots.Plot without error.
 # • Save every plot to test/temp/ so they can be inspected after the run.
-# • Cover single-location and multi-location inputs.
+# • Cover single-location inputs and location_index selection on multi-location data.
 # • Cover optional keyword arguments (yunit, xscale, freq_unit,
 #   max_constituents, location_index).
 #
@@ -31,7 +31,7 @@ function _ts_vlissgn()
     return prediction(tc, times, HatyanSettings(nodalfactors=true, fu_alltimes=true))
 end
 
-# Two-location TimeSeries built from the same data
+# Two-location TimeSeries built from the same data — used to test location_index selection.
 function _ts_two_locations()
     tc = read_donar_constituents(joinpath(TEST_DATA_DIR, "VLISSGN_ana.txt"))
     amp2 = tc.amplitudes .* 0.7f0
@@ -51,7 +51,7 @@ function _ts_two_locations()
     return prediction(tc_both, times, HatyanSettings(nodalfactors=true, fu_alltimes=true))
 end
 
-# Two-location TidalConstituents
+# Two-location TidalConstituents — used to test location_index selection.
 function _tc_two_locations()
     tc1  = read_donar_constituents(joinpath(TEST_DATA_DIR, "VLISSGN_ana.txt"))
     amp2 = tc1.amplitudes .* 0.8f0
@@ -97,13 +97,6 @@ end
     p2 = Plots.plot(ts; location_index=2)
     @test p2 isa Plots.Plot
     save_and_check(p2, "ts_loc2")
-end
-
-@testset "plot(TimeSeries): location_index=nothing overlays all locations" begin
-    ts = _ts_two_locations()
-    p  = Plots.plot(ts; location_index=nothing)
-    @test p isa Plots.Plot
-    save_and_check(p, "ts_all_locs")
 end
 
 @testset "plot(TimeSeries): out-of-range location_index errors" begin
@@ -160,13 +153,6 @@ end
     save_and_check(p2, "tc_loc2")
 end
 
-@testset "plot(TidalConstituents): location_index=nothing shows all locations" begin
-    tc_both = _tc_two_locations()
-    p = Plots.plot(tc_both; location_index=nothing, max_constituents=20)
-    @test p isa Plots.Plot
-    save_and_check(p, "tc_all_locs")
-end
-
 @testset "plot(TidalConstituents): out-of-range location_index errors" begin
     tc = read_donar_constituents(joinpath(TEST_DATA_DIR, "VLISSGN_ana.txt"))
     @test_throws ErrorException Plots.plot(tc; location_index=2)
@@ -214,12 +200,6 @@ end
     p2 = Plots.plot(fs; location_index=2)
     @test p2 isa Plots.Plot
     save_and_check(p2, "fs_loc2")
-end
-
-@testset "plot(FourierSeries): location_index=nothing shows all locations" begin
-    fs = fft_series(_ts_two_locations())
-    p  = Plots.plot(fs; location_index=nothing)
-    save_and_check(p, "fs_all_locs")
 end
 
 @testset "plot(FourierSeries): out-of-range location_index errors" begin
