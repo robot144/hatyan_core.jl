@@ -3,10 +3,12 @@ module hatyan_core
 # ── dependencies ─────────────────────────────────────────────────────────────
 using Dates
 using Printf
+using FFTW
 using MultiTimeSeries
 
 # ── abstract types ────────────────────────────────────────────────────────────
 abstract type AbstractTidalConstituents end
+abstract type AbstractFourierSeries end
 
 # ── source files ──────────────────────────────────────────────────────────────
 include("constituents.jl")
@@ -18,6 +20,9 @@ include("schureman.jl")
 include("foreman.jl")
 include("analysis.jl")
 include("prediction.jl")
+include("fourier_series.jl")
+include("fft.jl")
+include("plotting.jl")
 
 # ── exports ───────────────────────────────────────────────────────────────────
 
@@ -35,6 +40,15 @@ export merge_by_times, merge_by_locations
 export read_single_noos_file, read_muliple_noos_files, write_single_noos_file
 export get_source_quantity_keys, get_sources, get_quantities, get_series_from_collection
 export read_donar_timeseries
+
+# Fourier series
+export AbstractFourierSeries
+export FourierSeries
+export get_frequencies
+export select_frequencies_by_indices
+
+# FFT / IFFT
+export fft_series, ifft_series
 
 # tidal constituents
 export AbstractTidalConstituents
