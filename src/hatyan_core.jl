@@ -23,6 +23,7 @@ include("prediction.jl")
 include("fourier_series.jl")
 include("fft.jl")
 include("plotting.jl")
+include("statistics.jl")
 
 # ── exports ───────────────────────────────────────────────────────────────────
 
@@ -87,5 +88,8 @@ export analysis
 
 # Prediction
 export prediction
+
+# Statistics
+export compute_statistics
 
 end # module hatyan_core
