@@ -24,3 +24,7 @@ Plots = "1.41.6"
 Printf = "1.11.0"
 Statistics = "1.11.1"
 Test = "1.11.0"
+
+
+[sources]
+MultiTimeSeries = { url = "https://github.com/robot144/MultiTimeSeries.jl", rev = "main" }
