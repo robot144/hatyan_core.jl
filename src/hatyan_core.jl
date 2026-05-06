@@ -23,7 +23,6 @@ include("prediction.jl")
 include("fourier_series.jl")
 include("fft.jl")
 include("plotting.jl")
-include("statistics.jl")
 
 # ── exports ───────────────────────────────────────────────────────────────────
 
