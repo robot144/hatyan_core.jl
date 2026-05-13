@@ -158,6 +158,47 @@ end
     @test_throws ErrorException Plots.plot(tc; location_index=2)
 end
 
+@testset "plot(TidalConstituents, TidalConstituents): basic comparison" begin
+    tc1 = read_donar_constituents(joinpath(TEST_DATA_DIR, "VLISSGN_ana.txt"))
+    amp2 = tc1.amplitudes .* 0.9f0
+    phi2 = mod.(tc1.phases .+ 10.0f0, 360.0f0)
+    tc2  = TidalConstituents(amp2, phi2, tc1.constituent_names,
+                              tc1.names, tc1.longitudes, tc1.latitudes,
+                              tc1.quantity, tc1.source * " | pred")
+    p = Plots.plot(tc1, tc2)
+    @test p isa Plots.Plot
+    save_and_check(p, "tc_comparison_default")
+end
+
+@testset "plot(TidalConstituents, TidalConstituents): custom labels and max_constituents" begin
+    tc1 = read_donar_constituents(joinpath(TEST_DATA_DIR, "VLISSGN_ana.txt"))
+    amp2 = tc1.amplitudes .* 0.8f0
+    phi2 = mod.(tc1.phases .+ 20.0f0, 360.0f0)
+    tc2  = TidalConstituents(amp2, phi2, tc1.constituent_names,
+                              tc1.names, tc1.longitudes, tc1.latitudes,
+                              tc1.quantity, tc1.source)
+    p = Plots.plot(tc1, tc2; label_ref="Observed", label_comp="Predicted",
+                   max_constituents=10)
+    @test p isa Plots.Plot
+    save_and_check(p, "tc_comparison_custom")
+end
+
+@testset "plot(TidalConstituents, TidalConstituents): location_index" begin
+    tc_both = _tc_two_locations()
+    amp2 = tc_both.amplitudes .* 0.85f0
+    tc_comp = TidalConstituents(amp2, tc_both.phases, tc_both.constituent_names,
+                                 tc_both.names, tc_both.longitudes,
+                                 tc_both.latitudes, tc_both.quantity, tc_both.source)
+    p = Plots.plot(tc_both, tc_comp; location_index=2)
+    @test p isa Plots.Plot
+    save_and_check(p, "tc_comparison_loc2")
+end
+
+@testset "plot(TidalConstituents, TidalConstituents): out-of-range location_index errors" begin
+    tc = read_donar_constituents(joinpath(TEST_DATA_DIR, "VLISSGN_ana.txt"))
+    @test_throws ErrorException Plots.plot(tc, tc; location_index=2)
+end
+
 # ── FourierSeries plots ────────────────────────────────────────────────────────
 
 @testset "plot(FourierSeries): single location" begin
