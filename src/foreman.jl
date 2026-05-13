@@ -193,7 +193,7 @@ end
 
 
 function _build_foreman_table(lat_deg::Float64)
-    data_dir = joinpath(@__DIR__, "..", "data")
+    data_dir = joinpath(pkgdir(hatyan_core), "data")
     harm_file    = joinpath(data_dir, "data_foreman_harmonic.txt")
     shallow_file = joinpath(data_dir, "data_foreman_shallowrelations.txt")
 

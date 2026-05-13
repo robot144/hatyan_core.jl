@@ -212,7 +212,7 @@ end
 # ── Table construction ────────────────────────────────────────────────────────
 
 function _build_schureman_table()
-    data_dir = joinpath(@__DIR__, "..", "data")
+    data_dir = joinpath(pkgdir(hatyan_core), "data")
     names, V, F = _load_harmonic_csv(joinpath(data_dir, "data_schureman_harmonic.csv"))
     shallow     = _load_shallow_relations(joinpath(data_dir, "data_schureman_shallowrelations.csv"))
 
